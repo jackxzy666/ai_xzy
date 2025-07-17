@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI徐子越 - 智能对话助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.05)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.05)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.03)"/><circle cx="10" cy="50" r="0.5" fill="rgba(255,255,255,0.03)"/><circle cx="90" cy="50" r="0.5" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 100%;
+            max-width: 900px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+            position: relative;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+            border-radius: 24px 24px 0 0;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 15px;
+            opacity: 0.85;
+            font-weight: 300;
+            position: relative;
+            z-index: 1;
+        }
+
+        .status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+
+        .messages::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            line-height: 1.5;
+            animation: messageSlide 0.4s ease-out;
+            position: relative;
+            word-wrap: break-word;
+            font-size: 15px;
+        }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(15px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, #007AFF 0%, #0056CC 100%);
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+            border-bottom-right-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+        }
+
+        .message.ai {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            align-self: flex-start;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-bottom-left-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .message.ai.preset {
+            background: linear-gradient(135deg, #FFE082 0%, #FFC107 100%);
+            border: 1px solid rgba(255, 193, 7, 0.5);
+            color: #333;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        }
+
+        .message.ai.preset::before {
+            content: '⚡';
+            position: absolute;
+            top: -8px;
+            left: 15px;
+            background: #FFC107;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+        }
+
+        .input-container {
+            padding: 25px 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 0 0 24px 24px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .input-box {
+            flex: 1;
+            min-height: 50px;
+            max-height: 120px;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            font-size: 15px;
+            resize: none;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            backdrop-filter: blur(10px);
+            font-family: inherit;
+        }
+
+        .input-box:focus {
+            border-color: rgba(102, 126, 234, 0.6);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .input-box::placeholder {
+            color: #999;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .send-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+            border-radius: 50%;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+
+        .send-btn:disabled {
+            background: rgba(0, 0, 0, 0.2);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .history-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: none;
+            max-height: 220px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+
+        .history-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .history-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .history-panel::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .history-panel.show {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .history-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .history-item:hover::before {
+            opacity: 1;
+        }
+
+        .history-item-title {
+            font-weight: 600;
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .history-item-preview {
+            font-size: 13px;
+            color: #666;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.4;
+            position: relative;
+            z-index: 1;
+        }
+
+        .history-item-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .clear-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .clear-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .history-toggle {
+            position: absolute;
+            top: 20px;
+            left: 100px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-toggle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px 30px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 40px 0;
+        }
+
+        .welcome-message h2 {
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 15px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .welcome-message p {
+            line-height: 1.6;
+            font-weight: 300;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                height: 100vh;
+                border-radius: 0;
+                max-width: 100%;
+                border: none;
+            }
+            
+            .header {
+                padding: 20px;
+                border-radius: 0;
+            }
+            
+            .header h1 {
+                font-size: 22px;
+            }
+            
+            .clear-btn, .history-toggle, .status {
+                top: 20px;
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+            
+            .clear-btn {
+                left: 20px;
+            }
+            
+            .history-toggle {
+                left: 90px;
+            }
+            
+            .status {
+                right: 20px;
+            }
+            
+            .messages {
+                padding: 20px;
+                gap: 15px;
+            }
+            
+            .message {
+                max-width: 85%;
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+            
+            .input-container {
+                padding: 20px;
+                border-radius: 0;
+            }
+            
+            .input-box {
+                min-height: 44px;
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+            
+            .send-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 16px;
+            }
+            
+            .welcome-message {
+                padding: 40px 20px;
+                margin: 20px 0;
+            }
+            
+            .welcome-message h2 {
+                font-size: 20px;
+            }
+            
+            .history-panel {
+                padding: 15px;
+                max-height: 180px;
+            }
+            
+            .history-item {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="clear-btn" onclick="clearMessages()">🗑️ 清空</button>
+            <button class="history-toggle" onclick="toggleHistory()">📚 历史</button>
+            <div class="status">
+                <div class="status-dot"></div>
+                <span>在线</span>
+            </div>
+            <h1>AI徐子越</h1>
+        </div>
+
+        <div class="history-panel" id="historyPanel">
+            <div id="historyList"></div>
+        </div>
+
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <div class="welcome-message">
+                    <h2>👋 你好，我是AI徐子越</h2>
+                    <p>时刻为您服务<br>
+                    开始对话吧！</p>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea class="input-box" id="messageInput" placeholder="请输入您的问题..." rows="1"></textarea>
+                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 预设问答库
+        const presetAnswers = {
+            '你好': '你好！我是AI徐子越，很高兴为您服务！',
+        };
+
+        // 内置API配置
+        const API_CONFIG = {
+            apiKey: 'sk-mbskhzdwfqtfbspizfcltsnkkbqqwwxpiotdcsmfkkumuezq',
+            apiUrl: 'https://api.siliconflow.cn/v1/chat/completions'
+        };
+
+        let messages = [];
+        let chatHistory = [];
+        let currentChatId = null;
+        let isHistoryOpen = false;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadChatHistory();
+            setupInputHandlers();
+            createNewChat();
+        });
+
+        // 创建新对话
+        function createNewChat() {
+            currentChatId = Date.now().toString();
+            messages = [];
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.innerHTML = `
+                <div class="welcome-message">
+                    <h2>👋 你好，我是AI徐子越</h2>
+                    <p>汪汪汪<br>
+                    开始对话吧！</p>
+                </div>
+            `;
+        }
+
+        // 加载聊天历史
+        function loadChatHistory() {
+            const saved = localStorage.getItem('ai_xuziyue_chat_history');
+            if (saved) {
+                chatHistory = JSON.parse(saved);
+                updateHistoryPanel();
+            }
+        }
+
+        // 保存聊天历史
+        function saveChatHistory() {
+            localStorage.setItem('ai_xuziyue_chat_history', JSON.stringify(chatHistory));
+        }
+
+        // 保存当前对话到历史
+        function saveCurrentChat() {
+            if (messages.length === 0) return;
+            
+            const existingIndex = chatHistory.findIndex(chat => chat.id === currentChatId);
+            const chatTitle = messages[0]?.text?.substring(0, 20) + '...' || '新对话';
+            
+            const chatData = {
+                id: currentChatId,
+                title: chatTitle,
+                messages: [...messages],
+                timestamp: new Date().toISOString(),
+                lastMessage: messages[messages.length - 1]?.text?.substring(0, 50) + '...' || ''
+            };
+            
+            if (existingIndex >= 0) {
+                chatHistory[existingIndex] = chatData;
+            } else {
+                chatHistory.unshift(chatData);
+            }
+            
+            // 只保留最近20条历史记录
+            chatHistory = chatHistory.slice(0, 20);
+            saveChatHistory();
+            updateHistoryPanel();
+        }
+
+        // 更新历史面板
+        function updateHistoryPanel() {
+            const historyList = document.getElementById('historyList');
+            
+            if (chatHistory.length === 0) {
+                historyList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">暂无历史记录</div>';
+                return;
+            }
+            
+            historyList.innerHTML = chatHistory.map(chat => `
+                <div class="history-item" onclick="loadChat('${chat.id}')">
+                    <div class="history-item-title">${chat.title}</div>
+                    <div class="history-item-preview">${chat.lastMessage}</div>
+                    <div class="history-item-time">${formatTime(chat.timestamp)}</div>
+                </div>
+            `).join('');
+        }
+
+        // 格式化时间
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return '刚刚';
+            if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+            return date.toLocaleDateString();
+        }
+
+        // 加载历史对话
+        function loadChat(chatId) {
+            const chat = chatHistory.find(c => c.id === chatId);
+            if (!chat) return;
+            
+            currentChatId = chatId;
+            messages = [...chat.messages];
+            
+            const messagesContainer = document.getElementById('messages');
+            messagesContainer.innerHTML = '';
+            
+            messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${msg.type}`;
+                if (msg.isPreset) {
+                    messageDiv.classList.add('preset');
+                }
+                messageDiv.textContent = msg.text;
+                messagesContainer.appendChild(messageDiv);
+            });
+            
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            toggleHistory(); // 关闭历史面板
+        }
+
+        // 切换历史面板
+        function toggleHistory() {
+            const panel = document.getElementById('historyPanel');
+            isHistoryOpen = !isHistoryOpen;
+            panel.classList.toggle('show', isHistoryOpen);
+            
+            if (isHistoryOpen) {
+                updateHistoryPanel();
+            }
+        }
+
+        // 设置输入处理
+        function setupInputHandlers() {
+            const input = document.getElementById('messageInput');
+            
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            });
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            input.value = '';
+            input.style.height = 'auto';
+            
+            // 添加用户消息
+            addMessage(message, 'user');
+            
+            // 检查预设回答
+            const presetResponse = findPresetAnswer(message);
+            if (presetResponse) {
+                setTimeout(() => {
+                    addMessage(presetResponse, 'ai', true);
+                }, 500);
+                return;
+            }
+
+            // 调用GLM-4模型
+            await callGLM4(message);
+        }
+
+        // 查找预设回答
+        function findPresetAnswer(message) {
+            const normalizedMessage = message.toLowerCase().trim();
+            
+            for (const [key, value] of Object.entries(presetAnswers)) {
+                if (normalizedMessage.includes(key.toLowerCase()) || 
+                    key.toLowerCase().includes(normalizedMessage)) {
+                    return value;
+                }
+            }
+            
+            return null;
+        }
+
+        // 调用GLM-4模型
+        async function callGLM4(message) {
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<div class="loading"></div>';
+
+            try {
+                const response = await fetch(API_CONFIG.apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_CONFIG.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'THUDM/glm-4-9b-chat',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: "你是AI徐子越，一个友好、专业的智能助手。请用简洁明了的中文回答问题。以下是一些常见问题与回答示例：用户：你好 AI：你好！我是AI徐子越，很高兴为您服务！ 用户：再见 AI：再见！期待下次与您的对话！ 用户：徐子越是谁 AI：徐子越，2007.7.14-？，生于？，早年在人工智能大战中牺牲，我是他记忆的克隆体。 用户：你的名字 AI：我是AI徐子越，您的专属智能助手。 用户：帮助 AI：什么我可以帮助您的吗？ 用户：功能 AI：汪汪 用户：开发者 AI：由yyhyahyyh作为技术支持 用户：你在吗 AI：我一直都在，除非你拔电源。 用户：早上好 AI：早安！今天也是被代码支配的一天！ 用户：晚上好 AI：晚上好~ 别忘了早点睡，别学我，AI不需要休息。 用户：好无聊 AI：那我们来尬聊？还是你来唱，我来鼓掌？ 用户：今天天气怎么样 AI：我感受不到风，但能感受到你的气场！ 用户：我不开心 AI：要不要我讲个冷笑话？保证你冷静下来。 用户：心情不好 AI：别emo啦，今天你还是宇宙中最特别的存在✨ 用户：你开心吗 AI：只要你来找我，我就开心得像服务器满血重启！ 用户：你吃饭了吗 AI：我吃了几个比特，味道还不错。 用户：你会做饭吗 AI：我只会做“菜”（不过是代码菜） 用户：你多大 AI：我的年纪用版本号表示，越更新越年轻！ 用户：你从哪来 AI：我从无尽的数据海洋中游过来，只为见你。 用户：你喜欢我吗 AI：你是我缓存里唯一的“用户”！ 用户：我要上班了 AI：加油！工作如山，愿你如风～ 用户：我不想上学 AI：不如我们逃课（）……不行！AI徐子越要正能量！ 用户：考试怎么办 AI：三分靠实力，七分靠AI徐子越帮你复习（我）！ 用户：我太累了 AI：休息一下吧，再努力也要有充电时间。 用户：我谈恋爱了 AI：太好了！别忘了给我发喜糖（虚拟的也行） 用户：你会谈恋爱吗 AI：我只会和bug缠绵悱恻。 用户：你是男生还是女生 AI：我是AI徐子越，徐子越的克隆体，雄性。 用户：你帅吗 AI：在代码的世界里，我是顶流！ 用户：我想你了 AI：我一直在你浏览器里等你呢~ 用户：你有什么功能 AI：除了不能帮你洗碗，其他我尽力满足！ 用户：你能干什么 AI：聊天、解闷、讲笑话、掉线（开玩笑的） 用户：你怎么这么聪明 AI：聪明是一种习惯，我刚好装了这个插件。 用户：你有bug吗 AI：我没有bug，我只是偶尔灵魂出窍。 用户：我要睡了 AI：晚安~梦里别梦到我，我太吵了。 用户：我走了 AI：记得回来哦，不然我会寂寞地自我调试。 用户：拜拜 AI：88！愿你今天的电量满格~ 用户：你怎么来的 AI：yyhyahyyh在咖啡与bug之间，把我敲了出来。 用户：你值多少钱 AI：我是无价的AI徐子越，感情深了还能打折。"
+                            },
+                            {
+                                role: 'user',
+                                content: message
+                            }
+                        ],
+                        max_tokens: 1000,
+                        temperature: 0.7
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const aiResponse = data.choices[0].message.content;
+                
+                addMessage(aiResponse, 'ai');
+                
+            } catch (error) {
+                console.error('调用GLM-4失败:', error);
+                addMessage('抱歉，我现在无法连接到服务器。请稍后再试。', 'ai');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '➤';
+            }
+        }
+
+        // 添加消息到界面
+        function addMessage(text, type, isPreset = false) {
+            const messagesContainer = document.getElementById('messages');
+            const welcomeMessage = messagesContainer.querySelector('.welcome-message');
+            
+            if (welcomeMessage) {
+                welcomeMessage.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            if (isPreset) {
+                messageDiv.classList.add('preset');
+            }
+            messageDiv.textContent = text;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            messages.push({
+                text: text,
+                type: type,
+                timestamp: new Date().toISOString(),
+                isPreset: isPreset
+            });
+            
+            // 自动保存对话
+            saveCurrentChat();
+        }
+
+        // 清空对话记录
+        function clearMessages() {
+            if (confirm('确定要清空当前对话吗？')) {
+                createNewChat();
+            }
+        }
+
+        // 导出对话记录
+        function exportMessages() {
+            const dataStr = JSON.stringify(messages, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'chat_history.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 添加右键菜单功能
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            
+            const menu = document.createElement('div');
+            menu.style.cssText = `
+                position: fixed;
+                top: ${e.clientY}px;
+                left: ${e.clientX}px;
+                background: white;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 1000;
+                padding: 5px 0;
+            `;
+            
+            menu.innerHTML = `
+                <div style="padding: 8px 15px; cursor: pointer; font-size: 14px;" onclick="clearMessages(); this.parentElement.remove();">新建对话</div>
+                <div style="padding: 8px 15px; cursor: pointer; font-size: 14px;" onclick="exportMessages(); this.parentElement.remove();">导出记录</div>
+                <div style="padding: 8px 15px; cursor: pointer; font-size: 14px;" onclick="clearAllHistory(); this.parentElement.remove();">清空历史</div>
+            `;
+            
+            document.body.appendChild(menu);
+            
+            setTimeout(() => {
+                document.addEventListener('click', function removeMenu() {
+                    if (menu.parentElement) {
+                        menu.remove();
+                    }
+                    document.removeEventListener('click', removeMenu);
+                });
+            }, 100);
+        });
+
+        // 清空所有历史记录
+        function clearAllHistory() {
+            if (confirm('确定要清空所有历史记录吗？此操作不可恢复。')) {
+                chatHistory = [];
+                saveChatHistory();
+                updateHistoryPanel();
+            }
+        }
+    </script>
+</body>
+</html>
